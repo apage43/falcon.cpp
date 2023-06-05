@@ -16,7 +16,7 @@
 #define QK 32
 
 // default hparams (Bloom76B)
-struct bloom_hparams {
+struct falcon_hparams {
     int32_t n_vocab = 32000;
     int32_t n_ctx   = 512;   // this is provided as user input?
     int32_t n_embd  = 4096;
@@ -70,7 +70,7 @@ bool bloom_model_quantize(const std::string & fname_inp, const std::string & fna
         fout.write((char *) &magic, sizeof(magic));
     }
 
-    bloom_hparams hparams;
+    falcon_hparams hparams;
 
     // load hparams
     {

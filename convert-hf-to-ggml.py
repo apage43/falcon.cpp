@@ -19,19 +19,6 @@ import numpy as np
 from transformers import BloomModel
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig, BloomForCausalLM
 
-conv_map = {
-    'word_embeddings'       : 'tok_embeddings',
-    # "word_embeddings_layernorm": 'norm',
-    'input_layernorm'        : 'attention_norm',
-    'self_attention.query_key_value': 'attention.query_key_value',
-    'self_attention.dense':          'attention.wo',
-    'ln_mlp': 'ffn_norm',
-    'mlp.dense_h_to_4h'           : 'feed_forward.w1',
-    'mlp.dense_4h_to_h'           : 'feed_forward.w2',
-    'ln_f'                        : 'output_norm',
-    'lm_head' : 'output',
-}
-
 # ref: https://github.com/openai/gpt-2/blob/master/src/encoder.py
 def bytes_to_unicode():
     """
@@ -98,7 +85,7 @@ fout.write(struct.pack("i", hparams["n_head"]))
 fout.write(struct.pack("i", hparams["n_layer"]))
 fout.write(struct.pack("i", ftype))
 
-# Is this correct??
+# Is this correct?? (No.)
 dot_token = tokenizer.encode(".")[0]
 for i in range(hparams["vocab_size"]):
     text = tokenizer.decode([i]).encode('utf-8')
@@ -108,25 +95,6 @@ for i in range(hparams["vocab_size"]):
 list_vars = model.state_dict()
 for name in list_vars.keys():
     src = name
-    nn = name
-    if name != "lm_head.weight":
-        nn = nn.split(".")[1:]
-    else:
-        nn = nn.split(".")
-
-    if nn[0] == "h":
-        nn[0] = "layers"
-        mapped = conv_map[".".join(nn[2:-1])]
-        name = ".".join(nn[:2] + [mapped] + nn[-1:])
-    else:
-        mapped = conv_map[".".join(nn[:-1])]
-        name = ".".join([mapped] + nn[-1:])
-
-#    if "query_key_value" in src:
-#        q, k, v = list_vars[src].reshape(config.n_head, 3, -1).unbind(1)
-#        list_vars[src] = torch.cat([q, k, v], dim=0).reshape_as(list_vars[src])
-
-    print(src, ' -> ', name)
     data = list_vars[src].squeeze().numpy()
     data = data.astype(np.float32)
 
