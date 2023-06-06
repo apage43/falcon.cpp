@@ -528,7 +528,7 @@ bool falcon_eval(const falcon_model& model,
     const int n_head = hparams.n_head;
     const int n_vocab = hparams.n_vocab;
 
-    const int d_key = n_embd / n_head;
+    const size_t head_dim = n_embd / n_head;
 
     static size_t buf_size = 512u * 1024 * 1024;
     static void* buf = malloc(buf_size);
@@ -546,6 +546,7 @@ bool falcon_eval(const falcon_model& model,
     memcpy(embd->data, embd_inp.data(), N * ggml_element_size(embd));
 
     struct ggml_tensor* inpL = ggml_get_rows(ctx0, model.tok_embeddings, embd);
+    struct ggml_tensor* repeat_dummy = ggml_new_tensor_3d(ctx0, inpL->type, head_dim, N + n_past, n_head);
 
     for (int il = 0;
          il < 1 /*TODO: replace 1 with n_layer after porting complete! */;
@@ -588,7 +589,6 @@ bool falcon_eval(const falcon_model& model,
             //     n_embd/n_head * sizeof(float), n_embd + 2 * (n_embd / n_head)
             //     * sizeof(float), 0);
 
-            size_t head_dim = n_embd / n_head;
             size_t fused_qkv_row_nb =
                 (n_embd + 2 * (n_embd / n_head)) * sizeof(float);
 
@@ -660,9 +660,10 @@ bool falcon_eval(const falcon_model& model,
                     head_dim, 1, n_past + N),
                 0, 2, 1, 3);
 
+            K = ggml_repeat(ctx0, K, repeat_dummy);
             // K * Q
             struct ggml_tensor* KQ =
-                ggml_mul_mat(ctx0, ggml_repeat(ctx0, K, Q), Q);
+                ggml_mul_mat(ctx0, K, Q);
 
             // KQ_scaled = KQ / sqrt(n_embd/n_head)
             struct ggml_tensor* KQ_scaled = ggml_scale(
@@ -687,12 +688,8 @@ bool falcon_eval(const falcon_model& model,
                     head_dim, 1, n_past + N),
                 0, 2, 1, 3);
 
-            // TODO: currently aborting here, need to figure out right fix for
-            // multiquery V is 1,1,N,head_dim where KQ* is 1,n_head,N,N and we
-            // need a output of 1,n_head,N,head_dim KQV = transpose(V) *
-            // KQ_soft_max
-            struct ggml_tensor* dummy =
-                ggml_new_tensor_3d(ctx0, KQ->type, n_head, N, head_dim);
+            V = ggml_cont(ctx0, ggml_transpose(ctx0, ggml_repeat(ctx0, V, repeat_dummy)));
+
             struct ggml_tensor* KQV = ggml_mul_mat(ctx0, V, KQ_soft_max);
 
             // KQV_merged = KQV.permute(0, 2, 1, 3)
@@ -780,7 +777,7 @@ int main(int argc, char** argv) {
 
     gpt_params params;
     params.model = "./models/ggml-model-gpt4all-falcon-f16.bin";
-    params.prompt = "The best part of waking up";
+    params.prompt = "The best part of eating ice cream";
 
     if (gpt_params_parse(argc, argv, params) == false) {
         return 1;
