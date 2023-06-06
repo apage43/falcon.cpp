@@ -402,8 +402,8 @@ bool falcon_model_load(const std::string& fname,
                 if (tensor->ne[0] != ne[0] || tensor->ne[1] != ne[1]) {
                     fprintf(stderr,
                             "%s: tensor '%s' has wrong shape in model file: "
-                            "got [%lld, "
-                            "%lld], expected [%d, %d]\n",
+                            "got [%li, "
+                            "%li], expected [%d, %d]\n",
                             __func__, name.data(), tensor->ne[0], tensor->ne[1],
                             ne[0], ne[1]);
                     return false;
@@ -414,8 +414,8 @@ bool falcon_model_load(const std::string& fname,
                         tensor->ne[1] != ne[1]) {
                         fprintf(stderr,
                                 "%s: tensor '%s' has wrong shape in model "
-                                "file: got [%lld, "
-                                "%lld], expected [%d, %d]\n",
+                                "file: got [%li, "
+                                "%li], expected [%d, %d]\n",
                                 __func__, name.data(), tensor->ne[0] / n_parts,
                                 tensor->ne[1], ne[0], ne[1]);
                         return false;
@@ -425,8 +425,8 @@ bool falcon_model_load(const std::string& fname,
                         tensor->ne[1] / n_parts != ne[1]) {
                         fprintf(stderr,
                                 "%s: tensor '%s' has wrong shape in model "
-                                "file: got [%lld, "
-                                "%lld], expected [%d, %d]\n",
+                                "file: got [%li, "
+                                "%li], expected [%d, %d]\n",
                                 __func__, name.data(), tensor->ne[0],
                                 tensor->ne[1] / n_parts, ne[0], ne[1]);
                         return false;
