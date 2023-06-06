@@ -2130,7 +2130,6 @@ inline static void ggml_vec_dot_f32(const int n, float * restrict s, const float
 #endif
 
     *s = sumf;
-    //fprintf(stderr, " ggml_vec_dot_f32=%.4e\n", sumf);
 }
 
 inline static void ggml_vec_dot_f16(const int n, float * restrict s, ggml_fp16_t * restrict x, ggml_fp16_t * restrict y) {
@@ -3705,45 +3704,6 @@ inline static void ggml_critical_section_end(void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void ggml_print_tensor_f32(const struct ggml_tensor *tensor) {
-    assert(tensor->type == GGML_TYPE_F32);
-
-    // // a[1, 2] = 1.0f;
-    // *(float *) ((char *) a->data + 2*a->nb[1] + 1*a->nb[0]) = 1.0f;
-
-    GGML_PRINT("%s[%d/%d, %d/%d, %d/%d, %d/%d] = [\n", tensor->name, tensor->ne[3], tensor->nb[3], tensor->ne[2], tensor->nb[2], tensor->ne[1], tensor->nb[1], tensor->ne[0], tensor->nb[0]);
-
-    int64_t ne2 = tensor->ne[2];
-    int64_t ne1 = tensor->ne[1];
-    int64_t ne0 = tensor->ne[0];
-
-    if (ne2 > 32) ne2 = 32;
-    if (ne1 > 32) ne1 = 32;
-    if (ne0 > 32) ne0 = 32;
-
-    for (int64_t k = 0; k < ne2; k++) 
-    {
-        GGML_PRINT("  [");
-        for (int64_t j = 0; j < ne1; j++) {
-            if (j > 0) GGML_PRINT("   ");
-            GGML_PRINT("[");
-            for (int64_t i = 0; i < ne0; i++) {
-                float * elem = (float *)((char *) tensor->data + k*tensor->nb[2] + j*tensor->nb[1] + i*tensor->nb[0]);
-
-                if (*elem > 0) GGML_PRINT(" ");
-                GGML_PRINT("%.4e", *elem);
-                if (i < tensor->ne[0]-1) GGML_PRINT(", ");
-            }
-            if (ne0 < tensor->ne[0]) GGML_PRINT("...");
-            GGML_PRINT("],\n");
-        }
-        if (ne1 < tensor->ne[1]) GGML_PRINT("...");
-        GGML_PRINT("],\n");
-    }
-    if (ne2 < tensor->ne[2]) GGML_PRINT("  ...,\n");
-    fprintf(stderr, "]\n");
-}
-
 void ggml_print_object(const struct ggml_object * obj) {
     GGML_PRINT(" - ggml_object: offset = %zu, size = %zu, next = %p\n",
             obj->offs, obj->size, (const void *) obj->next);
@@ -4549,45 +4509,9 @@ void * ggml_get_data(const struct ggml_tensor * tensor) {
     return tensor->data;
 }
 
-float *ggml_get_data_f32(const struct ggml_tensor *tensor) {
+float * ggml_get_data_f32(const struct ggml_tensor * tensor) {
     assert(tensor->type == GGML_TYPE_F32);
-    float * data = tensor->data;
-
-//       // a[1, 2] = 1.0f;
-//       *(float *) ((char *) a->data + 2*a->nb[1] + 1*a->nb[0]) = 1.0f;
-    fprintf(stderr, "%s[%d/%d, %d/%d, %d/%d, %d/%d] = [\n", tensor->name, tensor->ne[3], tensor->nb[3], tensor->ne[2], tensor->nb[2], tensor->ne[1], tensor->nb[1], tensor->ne[0], tensor->nb[0]);
-
-    int64_t ne2 = tensor->ne[2];
-    int64_t ne1 = tensor->ne[1];
-    int64_t ne0 = tensor->ne[0];
-
-    if (ne2 > 32) ne2 = 32;
-    if (ne1 > 32) ne1 = 32;
-    if (ne0 > 32) ne0 = 32;
-
-    for (int64_t k = 0; k < ne2; k++) 
-    {
-        fprintf(stderr, "  [");
-        for (int64_t j = 0; j < ne1; j++) {
-            if (j > 0) fprintf(stderr, "   ");
-            fprintf(stderr, "[");
-            for (int64_t i = 0; i < ne0; i++) {
-                float * elem = (float *)((char *) tensor->data + k*tensor->nb[2] + j*tensor->nb[1] + i*tensor->nb[0]);
-
-                if (*elem > 0) fprintf(stderr, " ");
-                fprintf(stderr, "%.4e", *elem);
-                if (i < tensor->ne[0]-1) fprintf(stderr, ", ");
-            }
-            if (ne0 < tensor->ne[0]) fprintf(stderr, "...");
-            fprintf(stderr, "],\n");
-        }
-        if (ne1 < tensor->ne[1]) fprintf(stderr, "...");
-        fprintf(stderr, "],\n");
-    }
-    if (ne2 < tensor->ne[2]) fprintf(stderr, "  ...,\n");
-    fprintf(stderr, "]\n");
-
-    return (float *) (tensor->data);
+    return (float *)(tensor->data);
 }
 
 const char * ggml_get_name(const struct ggml_tensor * tensor) {
@@ -5511,7 +5435,6 @@ struct ggml_tensor * ggml_mul_mat(
     const int64_t ne[4] = { a->ne[1], b->ne[1], a->ne[2], b->ne[3] };
     struct ggml_tensor * result = ggml_new_tensor(ctx, GGML_TYPE_F32, MIN(a->n_dims, b->n_dims), ne);
 
-//fprintf(stderr, "ggml_mul_mat! %s x %s\n", a->name, b->name);
     result->op   = GGML_OP_MUL_MAT;
     result->grad = is_node ? ggml_dup_tensor(ctx, result) : NULL;
     result->src0 = a;
@@ -9712,6 +9635,7 @@ static void ggml_compute_forward_mul_mat_f32(
 #ifndef NDEBUG
     const int64_t ne12 = src1->ne[2];
     const int64_t ne13 = src1->ne[3];
+
     const int64_t ne0  = dst->ne[0];
     const int64_t ne1  = dst->ne[1];
     const int64_t ne2  = dst->ne[2];
@@ -9722,13 +9646,6 @@ static void ggml_compute_forward_mul_mat_f32(
     const int nb01 = src0->nb[1];
     const int nb02 = src0->nb[2];
     const int nb03 = src0->nb[3];
-
-/*    if (params->type == GGML_TASK_COMPUTE) {
-fprintf(stderr, "ggml_compute_forward_mul_mat_f32 [%d %d %d %d] x [%d %d %d %d] -> [%d %d %d %d]\n",
-    src0->ne[3], src0->ne[2], src0->ne[1], src0->ne[0],
-    src1->ne[3], src1->ne[2], src1->ne[1], src1->ne[0],
-    dst->ne[3], dst->ne[2], dst->ne[1], dst->ne[0]);
-}*/
 
 #ifndef NDEBUG
     const int nb10 = src1->nb[0];
@@ -9854,12 +9771,6 @@ fprintf(stderr, "ggml_compute_forward_mul_mat_f32 [%d %d %d %d] x [%d %d %d %d] 
             const int i1 = i11;
             const int i2 = i02;
             const int i3 = i03;
-
-/*fprintf(stderr, "COMPUTE ne00=%d ir=%d, ic=%d, dst idx %d,%d,%d,%d (%d) src0 idx %d,%d,%d (%d)=%.4e, src1 idx %d,%d,%d (%d) ",
-    ne00, ir, ic,
-    i3,i2,i1,i0, (i0*nb0 + i1*nb1 + i2*nb2 + i3*nb3)/4,
-    i03, i02, i01, (i01*nb01 + i02*nb02 + i03*nb03)/4, *((float *) ((char *) src0->data + (i01*nb01 + i02*nb02 + i03*nb03))),
-    i13, i12, i11, (i11*nb11 + i12*nb12 + i13*nb13)/4);*/
 
             ggml_vec_dot_f32(ne00,
                     (float *) ((char *)  dst->data + (i0*nb0 + i1*nb1 + i2*nb2 + i3*nb3)),
@@ -10070,6 +9981,7 @@ static void ggml_compute_forward_mul_mat_f16_f32(
         ggml_fp16_t * src1_col =                                wdata + (       0 + i12*ne11 + i13*ne12*ne11)*ne00;
 
         float * dst_col = (float *) ((char *) dst->data + (i0*nb0 + 0*nb1 + i2*nb2 + i3*nb3));
+
         for (int64_t ic = 0; ic < ne11; ++ic) {
             ggml_vec_dot_f16(ne00, &dst_col[ic*ne0], src0_row, src1_col + ic*ne00);
         }
