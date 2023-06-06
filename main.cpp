@@ -22,7 +22,6 @@ struct falcon_hparams {
     int32_t n_vocab = 65024;
     int32_t n_ctx   = 512;   // this is provided as user input?
     int32_t n_embd  = 8192;
-    int32_t n_mult  = 1;
     int32_t n_head  = 128;
     int32_t n_layer = 60;
     int32_t f16     = 1;
@@ -81,7 +80,7 @@ bool falcon_model_load(const std::string & fname, falcon_model & model, gpt_voca
     }
 
     int n_ff = 0;
-    int n_parts = 0;
+    int n_parts = 1;
 
     // load hparams
     {
@@ -89,21 +88,15 @@ bool falcon_model_load(const std::string & fname, falcon_model & model, gpt_voca
 
         fin.read((char *) &hparams.n_vocab, sizeof(hparams.n_vocab));
         fin.read((char *) &hparams.n_embd,  sizeof(hparams.n_embd));
-        fin.read((char *) &hparams.n_mult,  sizeof(hparams.n_mult));
         fin.read((char *) &hparams.n_head,  sizeof(hparams.n_head));
         fin.read((char *) &hparams.n_layer, sizeof(hparams.n_layer));
         fin.read((char *) &hparams.f16,     sizeof(hparams.f16));
 
         hparams.n_ctx = n_ctx;
-
-        n_ff = ((4*hparams.n_embd + hparams.n_mult - 1)/hparams.n_mult)*hparams.n_mult;
-        // n_parts = BLOOM_N_PARTS.at(hparams.n_embd);
-        n_parts = 1;
+        n_ff = 4*hparams.n_embd ;
 
         printf("%s: n_vocab = %d\n", __func__, hparams.n_vocab);
-        printf("%s: n_ctx   = %d\n", __func__, hparams.n_ctx);
         printf("%s: n_embd  = %d\n", __func__, hparams.n_embd);
-        printf("%s: n_mult  = %d\n", __func__, hparams.n_mult);
         printf("%s: n_head  = %d\n", __func__, hparams.n_head);
         printf("%s: n_layer = %d\n", __func__, hparams.n_layer);
         printf("%s: f16     = %d\n", __func__, hparams.f16);
@@ -651,11 +644,12 @@ bool falcon_eval(
                 ggml_permute(ctx0, ggml_reshape_3d(ctx0,
                                 ggml_view_1d(ctx0, model.memory_v, (n_past + N)*head_dim, il*n_ctx*ggml_element_size(model.memory_v)*head_dim),
                                 head_dim, 1, n_past + N),
-                        0, 2, 1, 3);
+                        2, 0, 1, 3);
 
             // TODO: currently aborting here, need to figure out right fix for multiquery
             // V is 1,1,N,head_dim where KQ* is 1,n_head,N,N and we need a output of 1,n_head,N,head_dim
             // KQV = transpose(V) * KQ_soft_max
+            struct ggml_tensor * dummy = ggml_new_tensor_3d(ctx0, KQ->type, n_head, N, head_dim);
             struct ggml_tensor * KQV = ggml_mul_mat(ctx0, V, KQ_soft_max);
 
             // KQV_merged = KQV.permute(0, 2, 1, 3)

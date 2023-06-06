@@ -16,8 +16,7 @@ import code
 import torch
 import numpy as np
 
-from transformers import BloomModel
-from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig, BloomForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig
 
 # ref: https://github.com/openai/gpt-2/blob/master/src/encoder.py
 def bytes_to_unicode():
@@ -74,18 +73,17 @@ print("Model loaded: ", model_name)
 
 fname_out = dir_out + f"/ggml-model-{model_name.split('/')[-1]}-{ftype_str[ftype]}.bin"
 fout = open(fname_out, "wb")
-
-hparams["multiple_of"] = 1
 fout.write(struct.pack("i", 0x67676d6c)) # magic: ggml in hex
 fout.write(struct.pack("i", hparams["vocab_size"]))
-# fout.write(struct.pack("i", hparams["seq_length"]))
 fout.write(struct.pack("i", hparams["hidden_size"]))
-fout.write(struct.pack("i", hparams["multiple_of"]))
 fout.write(struct.pack("i", hparams["n_head"]))
 fout.write(struct.pack("i", hparams["n_layer"]))
 fout.write(struct.pack("i", ftype))
 
-# Is this correct?? (No.)
+# Is this correct?
+# 
+# No. Multibyte characters that span multiple tokens like emoji 🤖 won't be
+# decoded properly.
 dot_token = tokenizer.encode(".")[0]
 for i in range(hparams["vocab_size"]):
     text = tokenizer.decode([i]).encode('utf-8')
