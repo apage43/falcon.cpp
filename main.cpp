@@ -549,7 +549,7 @@ bool falcon_eval(const falcon_model& model,
     struct ggml_tensor* repeat_dummy = ggml_new_tensor_3d(ctx0, inpL->type, head_dim, N + n_past, n_head);
 
     for (int il = 0;
-         il < 1 /*TODO: replace 1 with n_layer after porting complete! */;
+         il < n_layer;
          ++il) {
         struct ggml_tensor* residual = inpL;  // TODO: copy?
 
