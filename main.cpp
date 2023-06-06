@@ -551,7 +551,7 @@ bool falcon_eval(const falcon_model& model,
     for (int il = 0;
          il < 1 /*TODO: replace 1 with n_layer after porting complete! */;
          ++il) {
-        struct ggml_tensor* inpSA = inpL;  // TODO: copy?
+        struct ggml_tensor* residual = inpL;  // TODO: copy?
 
         struct ggml_tensor* cur;
 
@@ -567,6 +567,8 @@ bool falcon_eval(const falcon_model& model,
                 ctx0, ggml_repeat(ctx0, model.layers[il].attention_norm_b, cur),
                 cur);
         }
+
+        struct ggml_tensor* layernorm_output = cur;
 
         // fused_qkv = self.query_key_value(hidden_states)
         {
@@ -707,13 +709,13 @@ bool falcon_eval(const falcon_model& model,
         }
 
         // struct ggml_tensor * inpFF = ggml_add(ctx0, cur, inpSA);
-        struct ggml_tensor* inpFF = inpSA;
+        struct ggml_tensor* inpFF = layernorm_output;
         struct ggml_tensor* attn_out = ggml_cpy(
             ctx0, cur, ggml_new_tensor_2d(ctx0, GGML_TYPE_F32, n_embd, N));
 
         // feed-forward network
         {
-            cur = ggml_mul_mat(ctx0, model.layers[il].ffn_up, cur);
+            cur = ggml_mul_mat(ctx0, model.layers[il].ffn_up, inpFF);
             // cur = ggml_add(ctx0, ggml_repeat(ctx0, model.layers[il].w1_b,
             // cur), cur);
 
@@ -777,7 +779,7 @@ int main(int argc, char** argv) {
 
     gpt_params params;
     params.model = "./models/ggml-model-gpt4all-falcon-f16.bin";
-    params.prompt = "The best part of eating ice cream";
+    params.prompt = "The best part of waking up";
 
     if (gpt_params_parse(argc, argv, params) == false) {
         return 1;
